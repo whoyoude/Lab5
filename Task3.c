@@ -20,7 +20,6 @@ uint16_t flag = 0;
 
 void configureDAC();
 void configureADC();
-//uint16_t readvoltage();
 
 // Main Execution Loop
 int main(void)
@@ -30,14 +29,11 @@ int main(void)
 	configureDAC();
 	HAL_DAC_Start(&hDAC1, DAC_CHANNEL_1);
 	configureADC();
-	x[0] = 0;
+	x[0] = 0;//Initialize the buffer
+	
 	HAL_ADC_Start_DMA(&hADC3, (uint32_t*)x, 1);
 	while(1){
 		HAL_ADC_Start_DMA(&hADC3, (uint32_t*)x, 1);
-//		while(!flag){
-//		}
-//		HAL_ADC_Stop_DMA(&hADC3);
-//		flag = 0;
 	}
 }
 
@@ -47,22 +43,21 @@ void DMA2_Stream0_IRQHandler(){
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
-	flag = 1;
+	//Shift the value by one unit time leftward.
 	x_2 = x_1;
 	x_1 = x_now;
 	x_now = x[0];
+	//Calculate the output analog signal.
 	putout = 0.312500*x_now + 0.240385*x_1 + 0.312500*x_2 + 0.296875*putout;
 	HAL_DAC_SetValue(&hDAC1, DAC_CHANNEL_1,DAC_ALIGN_12B_R, putout);
 }
-//
-
-
 
 
 void configureADC()
-{  //A3 =>PF10 (ADC3_IN8)
+{       //A3 =>PF10 (ADC3_IN8)
 	__HAL_RCC_ADC3_CLK_ENABLE();
-
+	
+	//Initilaize the ADC handler.
 	hADC3.Instance = ADC3;
 	hADC3.Init.Resolution = ADC_RESOLUTION_12B;
 	hADC3.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
@@ -76,7 +71,6 @@ void configureADC()
 	hADC3.Init.ExternalTrigConv = ADC_SOFTWARE_START;
 	HAL_ADC_Init(&hADC3);
 
-	//ADC->CCR |= ADC_CCR_TSVREFE;
 	ADC_ChannelConfTypeDef adcchan;
 	adcchan.Channel = ADC_CHANNEL_8;
 	adcchan.Rank = ADC_REGULAR_RANK_1;
@@ -89,7 +83,7 @@ void configureADC()
 void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
 {
 	GPIO_InitTypeDef  GPIO_InitStruct;
-    if(hadc->Instance == ADC3){
+        if(hadc->Instance == ADC3){
     	// Enable GPIO Clocks
        	__HAL_RCC_GPIOF_CLK_ENABLE();
 
@@ -124,6 +118,7 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
 void configureDAC(){
 	__HAL_RCC_DAC_CLK_ENABLE();
 
+	//Initialize the DAC handler
 	hDAC1.Instance = DAC;
 	HAL_DAC_Init(&hDAC1);
 
@@ -136,7 +131,7 @@ void configureDAC(){
 void HAL_DAC_MspInit(DAC_HandleTypeDef *hdac)
 {
 	GPIO_InitTypeDef  GPIO_InitStruct;
-    if(hdac->Instance == DAC){
+        if(hdac->Instance == DAC){
     	// Enable GPIO Clocks
        	__HAL_RCC_GPIOA_CLK_ENABLE();
 
