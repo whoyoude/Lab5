@@ -74,9 +74,9 @@ void DMA2_Stream0_IRQHandler(){//ADC
 }
 
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc){
-	if(flag == 0){
-		flag = 1;
-		x_2 = x_1;
+	if(flag == 0){//Ensure the second hlaf of the buffer is empty.
+	    flag = 1;
+	    x_2 = x_1;
 	    x_1 = x_now;
 	    x_now = x[0];
 	    putout = 0.312500*x_now + 0.240385*x_1 + 0.312500*x_2 + 0.296875*putout;
@@ -87,11 +87,11 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc){
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 	if (flag == 1){//Make sure buffer is half-filled
-		flag = 0;
-		x_2 = x_1;
-		x_1 = x_now;
-		x_now = x[1];
-		putout = 0.312500*x_now + 0.240385*x_1 + 0.312500*x_2 + 0.296875*putout;
+	    flag = 0;
+	    x_2 = x_1;
+	    x_1 = x_now;
+	    x_now = x[1];
+	    putout = 0.312500*x_now + 0.240385*x_1 + 0.312500*x_2 + 0.296875*putout;
 	    y[0]= putout;
 	    HAL_DAC_Start_DMA(&hDAC1, DAC_CHANNEL_1,(uint32_t*) y,1,DAC_ALIGN_12B_R);
 	}
@@ -104,6 +104,7 @@ void configureADC()
 {  //A3 =>PF10 (ADC3_IN8)
 	__HAL_RCC_ADC3_CLK_ENABLE();
 
+	//Initialize the ADC handler.
 	hADC3.Instance = ADC3;
 	hADC3.Init.Resolution = ADC_RESOLUTION_12B;
 	hADC3.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
@@ -118,7 +119,6 @@ void configureADC()
 	hADC3.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
 	HAL_ADC_Init(&hADC3);
 
-	//ADC->CCR |= ADC_CCR_TSVREFE;
 	ADC_ChannelConfTypeDef adcchan;
 	adcchan.Channel = ADC_CHANNEL_8;
 	adcchan.Rank = ADC_REGULAR_RANK_1;
@@ -130,7 +130,7 @@ void configureADC()
 void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
 {
 	GPIO_InitTypeDef  GPIO_InitStruct;
-    if(hadc->Instance == ADC3){
+        if(hadc->Instance == ADC3){
     	// Enable GPIO Clocks
        	__HAL_RCC_GPIOF_CLK_ENABLE();
 
@@ -146,25 +146,28 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef *hadc)
     	dma2.Instance = DMA2_Stream0;
     	dma2.Init.Channel = DMA_CHANNEL_2;
     	dma2.Init.Direction = DMA_PERIPH_TO_MEMORY;
-		dma2.Init.PeriphInc = DMA_PINC_DISABLE;
-		dma2.Init.MemInc = DMA_MINC_ENABLE;
-		dma2.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
-		dma2.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
-		dma2.Init.Mode = DMA_CIRCULAR;
-		dma2.Init.Priority = DMA_PRIORITY_LOW;
-		dma2.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
-		HAL_DMA_Init(&dma2);
+	dma2.Init.PeriphInc = DMA_PINC_DISABLE;
+	dma2.Init.MemInc = DMA_MINC_ENABLE;
+	dma2.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
+	dma2.Init.MemDataAlignment = DMA_MDATAALIGN_HALFWORD;
+	dma2.Init.Mode = DMA_CIRCULAR;
+	dma2.Init.Priority = DMA_PRIORITY_LOW;
+	dma2.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+	HAL_DMA_Init(&dma2);
 
-		__HAL_LINKDMA(hadc, DMA_Handle,dma2);
+	//Connect ADC1 and its associated DMA.
+	__HAL_LINKDMA(hadc, DMA_Handle,dma2);
 
-		HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
-		HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+	//Enable the interrupt of DMA.
+	HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
+	HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
     }
 }
 
 void configureDAC(){
 	__HAL_RCC_DAC_CLK_ENABLE();
 
+	//Initialize the DAC handler.
 	hDAC1.Instance = DAC;
 	HAL_DAC_Init(&hDAC1);
 
